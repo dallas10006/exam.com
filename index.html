@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>CBT Exam System</title>
+
+  <!-- Inline CSS (style.css merged here as requested) -->
+  <style>
+    /* General Reset */
+    body { font-family: Arial, sans-serif; margin: 0; padding: 0; background: #f4f4f4; }
+    header { background: #2c3e50; color: white; padding: 15px; text-align: center; }
+
+    /* Navigation */
+    nav { background: #34495e; padding: 10px; text-align: center; }
+    nav button {
+      margin: 5px; padding: 10px 20px; cursor: pointer;
+      background: #2980b9; color: white; border: none; border-radius: 5px;
+    }
+    nav button:hover { background: #3498db; }
+
+    /* Sections */
+    section { padding: 20px; display: none; }
+    .active { display: block; }
+
+    /* Card Layout */
+    .card {
+      background: white; padding: 20px; margin: 10px auto; max-width: 800px;
+      border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    }
+
+    /* Inputs */
+    input, select, textarea {
+      width: 100%; padding: 10px; margin: 8px 0; border: 1px solid #ccc; border-radius: 5px;
+    }
+
+    /* Buttons */
+    button { background: #2980b9; color: white; border: none; padding: 10px 15px; border-radius: 5px; }
+    button:hover { background: #3498db; }
+
+    /* Layout helpers */
+    .row { display: flex; gap: 20px; flex-wrap: wrap; }
+    .col { flex: 1; min-width: 280px; }
+
+    /* Palette */
+    #paletteButtons { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
+    #paletteButtons button {
+      width: 40px; height: 40px; border-radius: 5px; border: none;
+      cursor: pointer; color: white; font-weight: bold;
+    }
+    #paletteButtons button:hover { opacity: 0.85; }
+
+    /* Chart canvases */
+    canvas { background: #fff; border: 1px solid #ddd; border-radius: 8px; margin-top: 15px; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Computer-Based Test (CBT) System</h1>
+</header>
+
+<nav>
+  <button onclick="showSection('adminLogin')">Admin Login</button>
+  <button onclick="showSection('studentLogin')">Student Login</button>
+</nav>
+
+<!-- Admin Login -->
+<section id="adminLogin" class="active">
+  <div class="card">
+    <h2>Admin login</h2>
+    <p><strong>Hint:</strong> username: admin, password: ict</p>
+    <input type="text" id="adminUser" placeholder="Username">
+    <input type="password" id="adminPass" placeholder="Password">
+    <button onclick="adminLogin()">Login</button>
+  </div>
+</section>
+
+<!-- Student Login -->
+<section id="studentLogin">
+  <div class="card">
+    <h2>Student login</h2>
+    <p><strong>Hint:</strong> username: dalbert, password: 12</p>
+    <input type="text" id="studentUser" placeholder="Username">
+    <input type="password" id="studentPass" placeholder="Password">
+    <button onclick="studentLogin()">Login</button>
+  </div>
+</section>
+
+<!-- Admin Dashboard -->
+<section id="adminDashboard">
+  <div class="card">
+    <h2>Admin dashboard</h2>
+    <div class="row">
+      <div class="col">
+        <h3>Manage exam</h3>
+        <input type="text" id="examTitle" placeholder="Exam Title (e.g., Basic Test)">
+        <input type="number" id="examDuration" placeholder="Duration (minutes)" min="1" value="2">
+        <textarea id="examNotes" placeholder="Notes (optional)"></textarea>
+        <button onclick="saveExamConfig()">Save exam config</button>
+      </div>
+      <div class="col">
+        <h3>Question bank (demo)</h3>
+        <p>For demo, 3 sample questions are preloaded in code. You can extend via backend later.</p>
+        <button onclick="showSection('viewReports')">Go to analytics</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Reports / Analytics -->
+<section id="viewReports">
+  <div class="card">
+    <h2>Exam analytics</h2>
+    <div class="row">
+      <div class="col">
+        <p id="avgScore">Average Score: --</p>
+        <p id="passRate">Pass Rate: --</p>
+        <p id="hardestQuestion">Hardest Question: --</p>
+      </div>
+      <div class="col">
+        <h3>Score distribution</h3>
+        <div id="scoreDistribution"></div>
+      </div>
+    </div>
+
+    <!-- Charts -->
+    <h3>Charts</h3>
+    <canvas id="scoreChart" width="400" height="200"></canvas>
+    <canvas id="passFailChart" width="400" height="200"></canvas>
+  </div>
+</section>
+
+<!-- Student Dashboard -->
+<section id="studentDashboard">
+  <div class="card">
+    <h2>Student dashboard</h2>
+    <p id="examSummary">Exam not configured yet. Default demo exam will be used.</p>
+    <button onclick="startExam()">Start exam</button>
+    <button onclick="showSection('viewResults')">View results</button>
+  </div>
+</section>
+
+<!-- Exam Section -->
+<section id="takeExam">
+  <div class="card">
+    <h2>Exam interface</h2>
+    <p id="timer">Time Left: 02:00</p>
+
+    <div class="row">
+      <div class="col">
+        <!-- Question Container -->
+        <div id="questionContainer">
+          <p id="questionText"></p>
+          <select id="answerSelect"></select>
+        </div>
+
+        <!-- Navigation -->
+        <div style="margin-top:10px;">
+          <button onclick="prevQuestion()">Previous</button>
+          <button onclick="nextQuestion()">Next</button>
+          <button onclick="markForReview()">Mark for review</button>
+          <button onclick="reviewExam()">Review answers</button>
+        </div>
+      </div>
+
+      <div class="col">
+        <!-- Question Palette -->
+        <div id="paletteContainer">
+          <h3>Question palette</h3>
+          <div id="paletteButtons"></div>
+          <p style="margin-top:8px;">
+            <strong>Legend:</strong>
+            <span style="display:inline-block;width:14px;height:14px;background:#27ae60;margin:0 6px 0 12px;"></span>Answered
+            <span style="display:inline-block;width:14px;height:14px;background:#c0392b;margin:0 6px 0 12px;"></span>Unanswered
+            <span style="display:inline-block;width:14px;height:14px;background:#f39c12;margin:0 6px 0 12px;"></span>Marked for review
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Review Page -->
+<section id="reviewExam">
+  <div class="card">
+    <h2>Review your answers</h2>
+    <div id="reviewContainer"></div>
+    <button onclick="submitExam()">Final submit</button>
+    <button onclick="showSection('takeExam')">Back to exam</button>
+  </div>
+</section>
+
+<!-- Results -->
+<section id="viewResults">
+  <div class="card">
+    <h2>Results</h2>
+    <p id="score">Your score will appear here after submission.</p>
+    <div id="breakdownContainer"></div>
+  </div>
+</section>
+
+<!-- Chart.js CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<!-- Application logic -->
+<script>
+  // Hardcoded credentials (as requested)
+  const ADMIN_CRED = { user: "admin", pass: "ict" };
+  const STUDENT_CRED = { user: "dalbert", pass: "12" };
+
+  // Global state
+  let currentUserRole = null; // "admin" | "student"
+  let timerInterval;
+  let timeLeft = 120; // seconds, default 2 minutes
+  let examStarted = false;
+  let examSubmitted = false;
+
+  // Demo questions (expand or replace via backend later)
+  const defaultQuestions = [
+    { text: "What is 2 + 2?", options: ["3", "4", "5"], correct: "4" },
+    { text: "Capital of France?", options: ["Berlin", "Paris", "Rome"], correct: "Paris" },
+    { text: "Which is a programming language?", options: ["Python", "Snake", "Lion"], correct: "Python" }
+  ];
+
+  // Active exam config
+  let examConfig = {
+    title: "Demo Exam",
+    durationMin: 2,
+    notes: ""
+  };
+  let questions = JSON.parse(JSON.stringify(defaultQuestions));
+
+  // Exam play state
+  let currentQuestion = 0;
+  let answers = [];
+  let markedForReview = [];
+
+  // Analytics
+  let studentResults = [];
+  let scoreChart, passFailChart;
+
+  // Section navigation with leave-exam protection
+  function showSection(id) {
+    if (examStarted && !examSubmitted && id !== 'takeExam' && id !== 'reviewExam') {
+      const confirmLeave = confirm("Are you sure you want to leave the exam? It will be auto-submitted.");
+      if (confirmLeave) {
+        autoSubmit("You left the exam page! Auto-submitted.");
+      } else {
+        return; // stay on exam
+      }
+    }
+    document.querySelectorAll('section').forEach(sec => sec.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+  }
+
+  // Admin login
+  function adminLogin() {
+    const u = document.getElementById('adminUser').value.trim();
+    const p = document.getElementById('adminPass').value.trim();
+    if (u === ADMIN_CRED.user && p === ADMIN_CRED.pass) {
+      currentUserRole = "admin";
+      showSection('adminDashboard');
+    } else {
+      alert("Invalid admin credentials");
+    }
+  }
+
+  // Student login
+  function studentLogin() {
+    const u = document.getElementById('studentUser').value.trim();
+    const p = document.getElementById('studentPass').value.trim();
+    if (u === STUDENT_CRED.user && p === STUDENT_CRED.pass) {
+      currentUserRole = "student";
+      updateStudentExamSummary();
+      showSection('studentDashboard');
+    } else {
+      alert("Invalid student credentials");
+    }
+  }
+
+  // Save exam config
+  function saveExamConfig() {
+    const title = document.getElementById('examTitle').value.trim() || "Demo Exam";
+    const durationMin = parseInt(document.getElementById('examDuration').value, 10) || 2;
+    const notes = document.getElementById('examNotes').value.trim();
+
+    examConfig = { title, durationMin, notes };
+    alert("Exam configuration saved");
+    updateStudentExamSummary();
+  }
+
+  // Update student dashboard summary
+  function updateStudentExamSummary() {
+    const summary = `Exam: ${examConfig.title} | Duration: ${examConfig.durationMin} minute(s)`;
+    document.getElementById('examSummary').textContent = summary;
+  }
+
+  // Start exam
+  function startExam() {
+    if (currentUserRole !== "student") {
+      alert("Please login as student to start the exam.");
+      return;
+    }
+    showSection('takeExam');
+    examStarted = true;
+    examSubmitted = false;
+
+    // Initialize time based on config
+    timeLeft = examConfig.durationMin * 60;
+
+    currentQuestion = 0;
+    answers = [];
+    markedForReview = [];
+    questions = JSON.parse(JSON.stringify(defaultQuestions)); // load demo questions
+
+    loadQuestion();
+    buildPalette();
+    updateTimer();
+    timerInterval = setInterval(() => {
+      timeLeft--;
+      updateTimer();
+      if (timeLeft <= 0) {
+        clearInterval(timerInterval);
+        autoSubmit("Time up! Auto-submitted.");
+      }
+    }, 1000);
+  }
+
+  // Load current question
+  function loadQuestion() {
+    const q = questions[currentQuestion];
+    document.getElementById("questionText").textContent = q.text;
+    const select = document.getElementById("answerSelect");
+    select.innerHTML = "";
+    q.options.forEach(opt => {
+      const option = document.createElement("option");
+      option.textContent = opt;
+      option.value = opt;
+      select.appendChild(option);
+    });
+    if (answers[currentQuestion]) select.value = answers[currentQuestion];
+    highlightPalette();
+  }
+
+  // Navigation
+  function nextQuestion() {
+    saveAnswer();
+    if (currentQuestion < questions.length - 1) {
+      currentQuestion++;
+      loadQuestion();
+    } else {
+      reviewExam();
+    }
+  }
+  function prevQuestion() {
+    saveAnswer();
+    if (currentQuestion > 0) {
+      currentQuestion--;
+      loadQuestion();
+    }
+  }
+
+  // Save selected answer
+  function saveAnswer() {
+    const selected = document.getElementById("answerSelect").value;
+    answers[currentQuestion] = selected;
+    highlightPalette();
+  }
+
+  // Mark for review
+  function markForReview() {
+    if (!markedForReview.includes(currentQuestion)) {
+      markedForReview.push(currentQuestion);
+    } else {
+      // Toggle off if already marked
+      markedForReview = markedForReview.filter(i => i !== currentQuestion);
+    }
+    highlightPalette();
+  }
+
+  // Palette build and highlight
+  function buildPalette() {
+    const container = document.getElementById("paletteButtons");
+    container.innerHTML = "";
+    questions.forEach((q, i) => {
+      const btn = document.createElement("button");
+      btn.textContent = i + 1;
+      btn.onclick = () => {
+        saveAnswer();
+        currentQuestion = i;
+        loadQuestion();
+      };
+      btn.id = "paletteBtn" + i;
+      container.appendChild(btn);
+    });
+    highlightPalette();
+  }
+  function highlightPalette() {
+    questions.forEach((q, i) => {
+      const btn = document.getElementById("paletteBtn" + i);
+      if (!btn) return;
+      const answered = !!answers[i];
+      const marked = markedForReview.includes(i);
+
+      // Base color
+      btn.style.background = answered ? "#27ae60" : "#c0392b";
+      // Marked override
+      if (marked) btn.style.background = "#f39c12";
+      // Current highlight
+      btn.style.border = (i === currentQuestion) ? "2px solid #000" : "none";
+    });
+  }
+
+  // Review page
+  function reviewExam() {
+    saveAnswer();
+    const container = document.getElementById("reviewContainer");
+    container.innerHTML = "";
+    questions.forEach((q, i) => {
+      const div = document.createElement("div");
+      const markText = markedForReview.includes(i) ? " (Marked for Review)" : "";
+      div.innerHTML = `<p><strong>Q${i+1}:</strong> ${q.text}<br>
+        <em>Your Answer:</em> ${answers[i] || "Not answered"} ${markText}</p>`;
+      container.appendChild(div);
+    });
+    showSection("reviewExam");
+  }
+
+  // Timer display
+  function updateTimer() {
+    const minutes = Math.floor(timeLeft / 60);
+    const seconds = timeLeft % 60;
+    document.getElementById('timer').textContent =
+      `Time Left: ${minutes.toString().padStart(2,'0')}:${seconds.toString().padStart(2,'0')}`;
+  }
+
+  // Final submit with confirmation
+  function submitExam() {
+    saveAnswer();
+
+    const unanswered = questions.length - answers.filter(a => a).length;
+    const marked = markedForReview.length;
+
+    const confirmSubmit = confirm(
+      `You are about to submit.\nUnanswered: ${unanswered}\nMarked for Review: ${marked}\n\nDo you want to continue?`
+    );
+    if (!confirmSubmit) {
+      showSection('takeExam');
+      return;
+    }
+
+    clearInterval(timerInterval);
+    examSubmitted = true;
+
+    const { scorePercent, scoreCount, breakdownHTML } = computeResults();
+    document.getElementById('score').textContent =
+      `You scored ${scorePercent}% (${scoreCount}/${questions.length})`;
+    document.getElementById('breakdownContainer').innerHTML = breakdownHTML;
+
+    // Save to analytics
+    studentResults.push({ score: scorePercent, answers: [...answers] });
+
+    showSection('viewResults');
+    updateAnalytics();
+  }
+
+  // Auto-submit
+  function autoSubmit(message) {
+    clearInterval(timerInterval);
+    examSubmitted = true;
+    saveAnswer();
+
+    const { scorePercent, scoreCount, breakdownHTML } = computeResults();
+    document.getElementById('score').textContent =
+      `${message} Final Score: ${scorePercent}% (${scoreCount}/${questions.length})`;
+    document.getElementById('breakdownContainer').innerHTML = breakdownHTML;
+
+    // Save to analytics
+    studentResults.push({ score: scorePercent, answers: [...answers] });
+
+    showSection('viewResults');
+    updateAnalytics();
+  }
+
+  // Compute result and breakdown
+  function computeResults() {
+    let scoreCount = 0;
+    let breakdownHTML = "";
+    questions.forEach((q, i) => {
+      const studentAnswer = answers[i] || "Not answered";
+      const correct = studentAnswer === q.correct;
+      if (correct) scoreCount++;
+      breakdownHTML += `
+        <p><strong>Q${i+1}:</strong> ${q.text}<br>
+        <em>Your Answer:</em> ${studentAnswer}<br>
+        <em>Correct Answer:</em> ${q.correct}<br>
+        <span style="color:${correct ? 'green' : 'red'}">
+          ${correct ? "✔ Correct" : "✘ Incorrect"}
+        </span></p>
+      `;
+    });
+    const scorePercent = Math.round((scoreCount / questions.length) * 100);
+    return { scorePercent, scoreCount, breakdownHTML };
+  }
+
+  // Analytics update and charts
+  function updateAnalytics() {
+    if (studentResults.length === 0) return;
+
+    // Average score
+    const avg = studentResults.reduce((sum, r) => sum + r.score, 0) / studentResults.length;
+    document.getElementById("avgScore").textContent = `Average Score: ${avg.toFixed(1)}%`;
+
+    // Pass rate (>= 50%)
+    const passes = studentResults.filter(r => r.score >= 50).length;
+    const passRate = (passes / studentResults.length) * 100;
+    document.getElementById("passRate").textContent = `Pass Rate: ${passRate.toFixed(1)}%`;
+
+    // Hardest question (lowest correct rate)
+    const correctCounts = Array(questions.length).fill(0);
+    studentResults.forEach(r => {
+      r.answers.forEach((ans, i) => {
+        if (ans === questions[i].correct) correctCounts[i]++;
+      });
+    });
+    const minCorrect = Math.min(...correctCounts);
+    const hardestIndices = correctCounts
+      .map((c, i) => ({ c, i }))
+      .filter(ci => ci.c === minCorrect)
+      .map(ci => ci.i);
+    const label = hardestIndices.length > 1
+      ? `Q${hardestIndices.map(i => i+1).join(", ")}`
+      : `Q${hardestIndices[0]+1}`;
+    document.getElementById("hardestQuestion").textContent =
+      `Hardest Question: ${label}`;
+
+    // Score distribution list
+    let distributionHTML = "";
+    studentResults.forEach((r, i) => {
+      distributionHTML += `<p>Student ${i+1}: ${r.score}%</p>`;
+    });
+    document.getElementById("scoreDistribution").innerHTML = distributionHTML;
+
+    // Charts
+    renderCharts(studentResults, passes);
+  }
+
+  function renderCharts(results, passes) {
+    const scores = results.map(r => r.score);
+
+    // Destroy previous charts if any
+    if (scoreChart) scoreChart.destroy();
+    if (passFailChart) passFailChart.destroy();
+
+    // Score bar chart
+    const scoreCtx = document.getElementById("scoreChart").getContext("2d");
+    scoreChart = new Chart(scoreCtx, {
+      type: 'bar',
+      data: {
+        labels: scores.map((s, i) => `Student ${i+1}`),
+        datasets: [{ label: 'Scores (%)', data: scores, backgroundColor: '#2980b9' }]
+      },
+      options: { responsive: true, scales: { y: { beginAtZero: true, max: 100 } } }
+    });
+
+    // Pass/fail pie chart
+    const passFailCtx = document.getElementById("passFailChart").getContext("2d");
+    passFailChart = new Chart(passFailCtx, {
+      type: 'pie',
+      data: {
+        labels: ['Pass', 'Fail'],
+        datasets: [{
+          data: [passes, results.length - passes],
+          backgroundColor: ['#27ae60', '#c0392b']
+        }]
+      },
+      options: { responsive: true }
+    });
+  }
+
+  // Default landing
+  // Admin/student can navigate using nav buttons
+</script>
+
+</body>
+</html>
